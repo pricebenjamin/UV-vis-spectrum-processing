@@ -4,4 +4,4 @@ This repository contains several R-scripts that may prove helpful for processing
 
 ![Electrionic absorption spectrum of iodine](/images/elec-abs-iodine.png)
 
-The above spectrum was collected using an Ocean Optics HR4000 spectrometer: firmware 1.50.0; SN HR4C463.
+The above spectrum was collected using an Ocean Optics HR4000 spectrometer (firmware version: 1.50.0; SN: HR4C463).
