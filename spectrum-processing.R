@@ -3,10 +3,30 @@
 
 
 #### Load spectral data ####
-filename <- "roomT-combined-spectral-data.csv"
+filename <- "highT-combined-spectral-data.csv"
 absorbance <- read.csv(filename, header = TRUE)
 head(absorbance)
 tail(absorbance)
+
+#### Compare different boxcar widths to raw data ####
+bw1 <- applyBoxcarWidth(absorbance, 1)
+bw2 <- applyBoxcarWidth(absorbance, 2)
+
+x <- 1
+y <- 2
+plot(
+  absorbance[[y]] ~ absorbance[[x]],
+  xlab = "Wavelength (nm)", ylab = "Absorbance",
+  xlim = c(500, 700), ylim = c(0, 0.8),
+  lwd = 0.1, col = "black", type = "l"
+)
+lines(bw1[[y]] ~ bw1[[x]], lwd = 0.1, col = "orange")
+lines(bw2[[y]] ~ bw2[[x]], lwd = 1, col = "red")
+abline(v = c(541.2, 539.0, 536.9, 571.6, 568.6, 565.6, 595.7, 592.0, 588.5), col = "blue")
+
+absorbanceWithBoxcar <- applyBoxcarWidth(absorbance, 2)
+head(absorbanceWithBoxcar)
+tail(absorbanceWithBoxcar)
 
 #### Spectrum processing ####
 
@@ -17,9 +37,10 @@ y <- 2 ## Column of 'absorbance' dataframe that holds y-values, e.g. 2 <-> Absor
 ## This filename should explain which absorbance is being processed, 
 ##  e.g. if y == 2, then you're processing the second column of the loaded csv file.
 ##  Use head(absorbance) if you don't know which column that is!
-outputFilename <- "roomT-processed-peaks-with-vqn-1min.csv"
+outputFilename <- "45_5C-boxcar-2-processed-peaks.csv"
 
-abs <- absorbance[,c(x,y)] ## Selecting and storing the columns of interest from the absorbance df
+##abs <- absorbance[,c(x,y)] ## Selecting and storing the columns of interest from the absorbance df
+abs <- absorbanceWithBoxcar[,c(x,y)]
 ## abs <- absorbance[19:3500,c(x,y)]
 colNames <- c("Wavelength", "Absorbance")    ## Names of columns
 names(abs)[] <- colNames
@@ -35,7 +56,7 @@ extremeInd <- sort(c(mxInd, mnInd), decreasing = FALSE) ## sort extrema indices
 ufmx <- indicesToPoints(abs, mxInd, xCol = 1, yCol = 2) ## Unfiltered maximums (for visual analysis)
 
 #### Filter parameters ####
-absorbanceDeltaThreshold <- 0.0044
+absorbanceDeltaThreshold <- 0.0005
 removeBefore             <- 513
 removeAfter              <- 573
 getEveryOtherAfter       <- 548
@@ -54,6 +75,7 @@ head(fmxPtsR)
 ## head(fmxPtsR)
 
 head(simes)
+head(mcnaught)
 
 pointsMatchedToLit <- matchRowToLit(fmxPtsR, simes) ## assign v' values to filtered maxima using literature values
 pointsMatchedToLit
@@ -62,10 +84,10 @@ procData <- extrapolateV(pointsMatchedToLit) ## assign remaining v' values accor
 procData ## fully processed data
 
 ## Verify your processed peaks by plotting
-point.sym <- 19 ## 19 == solid circular point, 1 == open circle
+point.sym <- 1 ## 19 == solid circular point, 1 == open circle
 plot(abs[[2]]~abs[[1]], xlab = names(abs)[1], ylab = names(abs)[2], 
      ##xlim = c(545, 550), ## Zoom in to inspect peaks
-     ylim = c(0,0.25), 
+     ylim = c(0,0.8), 
      type = 'l')
 points(ufmx, col = "red", pch = point.sym)
 points(fmxPts, col = "orange", pch = point.sym)
@@ -107,7 +129,7 @@ lcolor <- "gray"  ## line color; default = "black"
 svgfn <- "unknown.svg" ## Make sure to assign a descriptive filename
 svg(filename = svgfn, 
     width = wd, 
-    height = 0.25*wd, 
+    height = wd, 
     pointsize = pt.sz)
 
 plot(absorbance[[y]]~absorbance[[x]], xlab = names(absorbance)[x], ylab = names(absorbance)[y],
