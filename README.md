@@ -6,4 +6,4 @@ found in literature (for the iodine spectrum specifically), and adjust the resol
 vibrational absorptions. Additional scripts are included for performing tasks such as plotting spectra (example below) or 
 generating Birge-Sponer or second order plots from the processed spectral data.
 
-![Electrionic absorption spectrum of iodine](/images/elec-abs-iodine.svg)
+![Electrionic absorption spectrum of iodine](/images/elec-abs-iodine.png)
