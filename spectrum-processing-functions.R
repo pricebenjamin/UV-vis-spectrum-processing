@@ -4,6 +4,13 @@
 simes <- as.data.frame(matrix(c(541.2, 27, 539.0, 28, 536.9, 29), byrow = TRUE, nrow = 3, ncol = 2))
 names(simes)[] <- c("Wavelength", "v'")
 
+## McNaught, I. J., 1980, J. Chem. Educ., Volume 57, Number 2, p. 101
+mcnaught <- data.frame(
+  Wavelength = c(541.2, 539.0, 536.9, 571.6, 568.6, 565.6, 595.7, 592.0, 588.5),
+  XVQN       = c(    0,     0,     0,     1,     1,     1,     2,     2,     2), 
+  BVQN       = c(   27,    28,    29,    18,    19,    20,    13,    14,    15)
+)
+
 decreaseResolution <- function(dataFrame, n)
   ## Creates a new dataframe by sampling dataFrame for every nth point
 {
