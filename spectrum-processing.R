@@ -56,7 +56,7 @@ extremeInd <- sort(c(mxInd, mnInd), decreasing = FALSE) ## sort extrema indices
 ufmx <- indicesToPoints(abs, mxInd, xCol = 1, yCol = 2) ## Unfiltered maximums (for visual analysis)
 head(ufmx)
 
-#### Filter parameters ####
+#### Filter parameters for transitions originating in v'' = 0 only####
 absorbanceDeltaThreshold <- 0.01
 removeBefore             <- 513
 removeAfter              <- 573
@@ -95,13 +95,6 @@ points(fmxPts, col = "blue", pch = point.sym)
 ##points(fmxPtsR, col = "blue", pch = point.sym, cex = 1.4)
 abline(v = 573) ## Draw some lines to help fined sorting values
 
-## Finding the first peak corresponding to v'' = 2
-head(ufmx)
-pkwl <- 574.71 ## peak wavelength
-tol <- 1 ## tolerance
-ufmx[which(abs(ufmx[,1] - pkwl) < tol),] ## Filter for rows whose wavelength is within tol of pkwl
-fmxPts <- includeRows(fmxPts, c(1281), absorbance, x, y)
-
 ## Plotting with ggplot and labeling fmxPts by wavelength
 require(ggplot2)
 require(ggrepel)
@@ -135,6 +128,72 @@ ggsave(
 )
 
 ## Write out the processed data
+write.csv(procData, outputFilename, row.names = FALSE)
+
+#### Filter parameters for transitions that originate in v'' = c(0, 1, 2) ####
+absorbanceDeltaThreshold <- 0.01
+removeBefore <- 505
+removeAfter <- 620
+
+filteredPeaks <- maxAbsFilter(absorbance, extremeInd, yCol = y, threshold = absorbanceDeltaThreshold)
+filteredPeaks <- indicesToPoints(absorbance, filteredPeaks, x, y)
+filteredPeaks <- removePointsByValue(filteredPeaks, removeBefore, ltVal = TRUE)
+filteredPeaks <- removePointsByValue(filteredPeaks, removeAfter, ltVal = FALSE)
+
+## Finding the first peak corresponding to v'' = 2
+head(ufmx)
+pkwl <- 574.71 ## peak wavelength
+tol <- 1 ## tolerance
+ufmx[which(abs(ufmx[,1] - pkwl) < tol),] ## Filter for rows whose wavelength is within tol of pkwl
+filteredPeaks <- includeRows(filteredPeaks, c(1281), absorbance, x, y)
+
+## Plotting to verify that all peaks have been found before sorting between v'' = (0,1,2)
+plot(absorbance[[y]] ~ absorbance[[x]],
+     ylim = c(0, 0.6),
+     type = 'l')
+points(ufmx, col = "red", pch = 1)
+points(filteredPeaks, col = "blue", pch = 1)
+
+## Grouping filteredPeaks into v'' = c(0,1,2)
+vpp0 <- removePointsByValue(filteredPeaks, value = 574.5, ltVal = FALSE)
+vpp0 <- removeEveryOtherAfter(vpp0, value = 542)
+ufmx[which(abs(ufmx[,1] - 577.46) < 0.1),]
+vpp0 <- includeRows(vpp0, c(1318), absorbance, x, y)
+
+vpp1 <- removePointsByValue(filteredPeaks, value = 545, ltVal = TRUE)
+vpp1 <- removePointsByValue(vpp1, value = 575, ltVal = FALSE)
+vpp1 <- removeEveryOtherAfter(vpp1, value = 545)
+ufmx[which(abs(ufmx[,1] - 577.91) < 0.1), ]
+ufmx[which(abs(ufmx[,1] - 581.22) < 0.1), ]
+vpp1 <- includeRows(vpp1, c(1326, 1384), absorbance, x, y)
+
+vpp2 <- removePointsByValue(filteredPeaks, value = 581.5, ltVal = TRUE)
+ufmx[which(abs(ufmx[,1] - 575.34) < 0.1), ]
+ufmx[which(abs(ufmx[,1] - 578.48) < 0.1), ]
+vpp2 <- includeRows(vpp2, c(1281, 1336), absorbance, x, y)
+
+blueColors <- colorRampPalette(c("blue", "cyan"))(3)
+points(vpp0, col = blueColors[1], pch = 19)
+points(vpp0, col = "black", pch = 1)
+points(vpp1, col = blueColors[2], pch = 19)
+points(vpp1, col = "black", pch = 1)
+points(vpp2, col = blueColors[3], pch = 19)
+points(vpp2, col = "black", pch = 1)
+
+vpp0 <- data.frame(vpp0, XVQN = 0)
+vpp1 <- data.frame(vpp1, XVQN = 1)
+vpp2 <- data.frame(vpp2, XVQN = 2)
+
+vpp0 <- matchRowToLit(vpp0, mcnaught[which(mcnaught[, 2] == 0), c(1,3)])
+vpp0 <- extrapolateV(vpp0)
+vpp1 <- matchRowToLit(vpp1, mcnaught[which(mcnaught[, 2] == 1), c(1,3)])
+vpp1 <- extrapolateV(vpp1)
+vpp2 <- matchRowToLit(vpp2, mcnaught[which(mcnaught[, 2] == 2), c(1,3)])
+vpp2 <- extrapolateV(vpp2)
+
+procData <- rbind(vpp0, vpp1, vpp2)
+procData
+
 write.csv(procData, outputFilename, row.names = FALSE)
 
 #### Export filter parameters and associated input/output filenames + hashes ####
