@@ -186,9 +186,8 @@ matchRowToLit <- function(dataFrame, litFrame, tolerance = 0.2)
   ## if ( abs(dataFrame$Wavelength - litFrame$Wavelength) < tolerance )
 {
   nRows <- nrow(dataFrame)
-  nCols <- ncol(dataFrame)
-  dataFrame[, nCols + 1] <- rep(NA, nRows)
-  names(dataFrame)[nCols + 1] <- "BVQN"
+  dataFrame[,3] <- rep(NA, nRows)
+  names(dataFrame)[3] <- "v'"
   
   matchedRows <- 0 ## Vector to store rows in dataFrame that were successfully matched to literature
   mrInd <- 1 ## matchedRows indexer
@@ -201,7 +200,7 @@ matchRowToLit <- function(dataFrame, litFrame, tolerance = 0.2)
     {
       lwl <- litFrame[litRow,1] ## literature wavelength
       if(abs(cwl - lwl) < tolerance) {
-        dataFrame[row, nCols + 1] <- litFrame[litRow,2]
+        dataFrame[row, 3] <- litFrame[litRow,2]
         matchedRows[mrInd] <- row
         mrInd <- mrInd + 1
       }
@@ -215,31 +214,30 @@ extrapolateV <- function(dataFrame)
   ## Assuming matchRowToLit was successful, consecutive rows in dataFrame should contain consecutive v' values.
   ## The remaining v' values are assigned by this function.
 {
-  nCols <- ncol(dataFrame) ## BVQN should be stored in last column
-  maxvRow <- which.max(dataFrame[, nCols]) ## row of max v'
-  minvRow <- which.min(dataFrame[, nCols]) ## row of min v'
+  maxvRow <- which.max(dataFrame[,3]) ## row of max v'
+  minvRow <- which.min(dataFrame[,3]) ## row of min v'
   vDecreasesByRow <- if(maxvRow < minvRow) TRUE else FALSE
   nRows <- nrow(dataFrame)
   
   if(vDecreasesByRow) {
     ## Start at maxvRow and assign upward, then start at minvRow and assign downward
     if(maxvRow > 1) for(row in c( (maxvRow-1):1 )) {
-      vToAssign <- max(dataFrame[, nCols], na.rm = TRUE) + 1
-      dataFrame[row, nCols] <- vToAssign
+      vToAssign <- max(dataFrame[,3], na.rm = TRUE) + 1
+      dataFrame[row, 3] <- vToAssign
     }
     if(minvRow < nRows) for(row in c( (minvRow+1):nRows )) {
-      vToAssign <- min(dataFrame[, nCols], na.rm = TRUE) - 1
-      dataFrame[row, nCols] <- vToAssign
+      vToAssign <- min(dataFrame[,3], na.rm = TRUE) - 1
+      dataFrame[row, 3] <- vToAssign
     }
   } else {
     ## Start at minvRow and assign upward, then start at maxvRow and assign downward
     if(minvRow > 1) for(row in c( (minvRow-1):1 )) {
-      vToAssign <- min(dataFrame[, nCols], na.rm = TRUE) - 1
-      dataFrame[row, nCols] <- vToAssign
+      vToAssign <- min(dataFrame[,3], na.rm = TRUE) - 1
+      dataFrame[row, 3] <- vToAssign
     }
     if(maxvRow < nRows) for(row in c( (maxvRow+1):nRows )) {
-      vToAssign <- max(dataFrame[, nCols], na.rm = TRUE) + 1
-      dataFrame[row, nCols] <- vToAssign
+      vToAssign <- max(dataFrame[,3], na.rm = TRUE) + 1
+      dataFrame[row, 3] <- vToAssign
     }
   }
   
