@@ -3,7 +3,7 @@
 
 
 #### Load spectral data ####
-filename <- "highT-combined-spectral-data.csv"
+filename <- "boxcar-combined-spectral-data.csv"
 absorbance <- read.csv(filename, header = TRUE)
 head(absorbance)
 tail(absorbance)
@@ -24,7 +24,7 @@ lines(bw1[[y]] ~ bw1[[x]], lwd = 0.1, col = "orange")
 lines(bw2[[y]] ~ bw2[[x]], lwd = 1, col = "red")
 abline(v = c(541.2, 539.0, 536.9, 571.6, 568.6, 565.6, 595.7, 592.0, 588.5), col = "blue")
 
-absorbanceWithBoxcar <- applyBoxcarWidth(absorbance, 2)
+absorbanceWithBoxcar <- applyBoxcarWidth(absorbance, 2) ## Really slow...
 head(absorbanceWithBoxcar)
 tail(absorbanceWithBoxcar)
 
@@ -37,10 +37,10 @@ y <- 2 ## Column of 'absorbance' dataframe that holds y-values, e.g. 2 <-> Absor
 ## This filename should explain which absorbance is being processed, 
 ##  e.g. if y == 2, then you're processing the second column of the loaded csv file.
 ##  Use head(absorbance) if you don't know which column that is!
-outputFilename <- "45_5C-boxcar-2-processed-peaks.csv"
+outputFilename <- "spectraSuite-bxw-2-processed-peaks.csv"
 
-##abs <- absorbance[,c(x,y)] ## Selecting and storing the columns of interest from the absorbance df
-abs <- absorbanceWithBoxcar[,c(x,y)]
+abs <- absorbance[,c(x,y)] ## Selecting and storing the columns of interest from the absorbance df
+##abs <- absorbanceWithBoxcar[,c(x,y)]
 ## abs <- absorbance[19:3500,c(x,y)]
 colNames <- c("Wavelength", "Absorbance")    ## Names of columns
 names(abs)[] <- colNames
@@ -54,9 +54,10 @@ mnInd <- peakr(abs, xCol = 1, yCol = 2, findMins = TRUE, returnIndices = TRUE) #
 extremeInd <- sort(c(mxInd, mnInd), decreasing = FALSE) ## sort extrema indices
 
 ufmx <- indicesToPoints(abs, mxInd, xCol = 1, yCol = 2) ## Unfiltered maximums (for visual analysis)
+head(ufmx)
 
 #### Filter parameters ####
-absorbanceDeltaThreshold <- 0.0005
+absorbanceDeltaThreshold <- 0.01
 removeBefore             <- 513
 removeAfter              <- 573
 getEveryOtherAfter       <- 548
@@ -90,10 +91,50 @@ plot(abs[[2]]~abs[[1]], xlab = names(abs)[1], ylab = names(abs)[2],
      ylim = c(0,0.8), 
      type = 'l')
 points(ufmx, col = "red", pch = point.sym)
-points(fmxPts, col = "orange", pch = point.sym)
-points(fmxPtsR, col = "blue", pch = point.sym, cex = 1.4)
+points(fmxPts, col = "blue", pch = point.sym)
+##points(fmxPtsR, col = "blue", pch = point.sym, cex = 1.4)
 abline(v = 573) ## Draw some lines to help fined sorting values
 
+## Finding the first peak corresponding to v'' = 2
+head(ufmx)
+pkwl <- 574.71 ## peak wavelength
+tol <- 1 ## tolerance
+ufmx[which(abs(ufmx[,1] - pkwl) < tol),] ## Filter for rows whose wavelength is within tol of pkwl
+fmxPts <- includeRows(fmxPts, c(1281), absorbance, x, y)
+
+## Plotting with ggplot and labeling fmxPts by wavelength
+require(ggplot2)
+require(ggrepel)
+roundedValues <- fmxPts
+roundedValues[,1] <- round(fmxPts[,1], digits = 2)
+roundedValues <- removePointsByValue(roundedValues, 505)
+roundedValues <- removePointsByValue(roundedValues, 620, ltVal = FALSE)
+head(roundedValues)
+tail(roundedValues)
+ggplot(data = abs, mapping = aes(x = Wavelength, y = Absorbance)) +
+  scale_y_continuous(limits = c(0, 0.6)) + 
+  geom_line() + 
+  geom_point(data = ufmx, col = "red", shape = 1) + 
+  geom_point(data = fmxPts, col = "blue", shape = 1) + 
+  ggrepel::geom_text_repel(
+    data = roundedValues, 
+    mapping = aes(label = Wavelength, angle = 90),
+    size = 1, alpha = 0.6,
+    nudge_x = 0, nudge_y = 0.02,
+    force = 0.01,
+    segment.color = "lightblue")
+
+## Save ggplot:
+ggfilename = "unknown-ggplot.svg"
+width = 20 ## inches
+aspectRatio = 0.618 ## golden ratio
+
+ggsave(
+  ggfilename,
+  device = svg(width = width, height = aspectRatio*width, pointsize = 12)
+)
+
+## Write out the processed data
 write.csv(procData, outputFilename, row.names = FALSE)
 
 #### Export filter parameters and associated input/output filenames + hashes ####
