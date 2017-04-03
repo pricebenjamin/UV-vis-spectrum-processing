@@ -22,10 +22,14 @@ applyBoxcarWidth <- function(dataFrame, n)
   nrdf <- nrow(dataFrame)
   boxcar <- dataFrame[c( (1 + n):(nrdf - n) ), ]
   nrbx <- nrow(boxcar)
-  for(row in c(1:nrbx))
+  for(i in c(1:nrbx))
   {
-    dfrow <- row + n
-    boxcar[row, ] <- colMeans(dataFrame[c( (dfrow - n):(dfrow + n) ), ])
+    dfrow <- i + n
+    ## Calculate mean of dataFrame rows (dfrow - n):(dfrow + n)
+    rowMean <- rep(0, ncol(dataFrame)) #initialize
+    for(j in c( (dfrow - n):(dfrow + n)) )
+      rowMean <- rowMean + dataFrame[j, ] / (2*n + 1)
+    boxcar[i, ] <- rowMean
   }
   return(boxcar)
 }
@@ -33,9 +37,12 @@ applyBoxcarWidth <- function(dataFrame, n)
 peakr <- function(dataFrame, xCol, yCol, findMins = FALSE, returnIndices = FALSE)   ## What an original name
   ## Simple peak finder
 {
-  peakIndices <- 0 ## initialize 
-  index = 1
-  for (row in c(2:(nrow(dataFrame)-1) )) {
+  indicesOfExtrema <- NA ## initialize
+  index <- 1
+  nr <- nrow(dataFrame)
+  
+  for (row in c(2:(nr - 1)))
+  {
     cdate <- row ## Candidate index
     cVal <- dataFrame[row, yCol] ## y-val at candidate index
     prevVal <- dataFrame[row - 1, yCol]
@@ -46,56 +53,71 @@ peakr <- function(dataFrame, xCol, yCol, findMins = FALSE, returnIndices = FALSE
     
     if ( (findMins & isMin) || (!findMins & isMax) )
     {
-      ## Found peak from left. Add candidate to peakIndices and increment index.
-      peakIndices[index] <- cdate
+      ## Found peak from left. Add candidate to indicesOfExtrema and increment index.
+      indicesOfExtrema[index] <- cdate
       index <- index + 1
     }
   }
   
-  if(returnIndices) return(peakIndices)
-  
-  peaks <- matrix(0, nrow = length(peakIndices), ncol = 2)
-  row = 1
-  for (index in peakIndices)
-  {
-    peaks[row, 1] <- dataFrame[index, xCol]
-    peaks[row, 2] <- dataFrame[index, yCol]
-    row <- row + 1
-  }
-  return(as.data.frame(peaks))
+  if(returnIndices) return(indicesOfExtrema)
+  else return(dataFrame[indicesOfExtrema, c(xCol, yCol)])
 }
 
-maxAbsFilter <- function(dataFrame, indices, yCol, threshold) 
+maxAbsFilter <- function(dataFrame, xCol, yCol, threshold, type = "l") 
   ## Filter indices of extreme values for specific maxima
+  ## type = "l", "r", or "both"
 {
-  maximums <- 0 ## vector to store dataframe indices of maximum values (filtered as follows)
-  i <- 1
-  for(index in c(2:length(indices)))
-  {
-    xVal <- indices[index] ## xVal holds the dataFrame index of extreme value
-    pxVal <- indices[index-1] ## pxVal holds the dataFrame index of the previous extreme value
-    dy <- dataFrame[xVal, yCol] - dataFrame[pxVal, yCol] ## dy is the difference between adjacent extrema
-    if(dy > threshold)
+  minima <- peakr(dataFrame, xCol, yCol, findMins = TRUE, returnIndices = FALSE)
+  maxima <- peakr(dataFrame, xCol, yCol, findMins = FALSE, returnIndices = FALSE)
+  extrema <- rbind(minima, maxima)
+  extrema <- extrema[order(extrema[[1]], decreasing = FALSE), ]
+  nr <- nrow(extrema)
+  
+  indicesOfThresholdMaxima <- NA ## initialize
+  i <- 1 ## indexer for indicesOfThresholdMaxima
+  
+  if(type == "l" || type == "left") {
+    for(row in c(2:nr))
     {
-      maximums[i] <- xVal
-      i <- i + 1
+      cdateAbs <- extrema[row, 2] ## candidate absorbance
+      prevAbs <- extrema[row - 1, 2] ## previous absorbance
+      
+      if(cdateAbs - prevAbs > threshold) {
+        indicesOfThresholdMaxima[i] <- row
+        i <- i + 1
+      }
+    }
+  } else if(type == "r" || type == "right") {
+    for(row in c(1:(nr-1)))
+    {
+      cdateAbs <- extrema[row, 2]
+      nextAbs <- extrema[row + 1, 2]
+      
+      if(cdateAbs - nextAbs > threshold) {
+        indicesOfThresholdMaxima[i] <- row
+        i <- i + 1
+      }
+    }
+  } else if(type == "both") {
+    for(row in c(2:(nr-1)))
+    {
+      cdateAbs <- extrema[row, 2]
+      prevAbs <- extrema[row - 1, 2]
+      nextAbs <- extrema[row + 1, 2]
+      
+      if(cdateAbs - prevAbs > threshold && cdateAbs - nextAbs > threshold) {
+        indicesOfThresholdMaxima[i] <- row
+        i <- i + 1
+      }
     }
   }
-  return(maximums)
+  
+  return(extrema[indicesOfThresholdMaxima, ])
 }
 
 indicesToPoints <- function(dataFrame, indices, xCol, yCol) 
   ## Convert vector of indices to dataframe of plottable points
 {
-  # points <- matrix(0, nrow = length(indices), ncol = 2)
-  # i <- 1
-  # for(index in indices)
-  # {
-  #   points[i, 1] <- dataFrame[index, xCol]
-  #   points[i, 2] <- dataFrame[index, yCol]
-  #   i <- i + 1
-  # }
-  # return(as.data.frame(points))
   return(dataFrame[indices,c(xCol, yCol)])
 }
 
@@ -157,7 +179,7 @@ includeRows <- function(pointList, rowIndexVector, dataFrame, xCol, yCol)
     wavelengthToAdd <- dataFrame[row,xCol]
     for(point in c(1:nrow(pointList)))
     {
-      wavelengthInPointList <- pointList[point,1]
+      wavelengthInPointList <- pointList[point, 1]
       if(wavelengthToAdd == wavelengthInPointList)
       {
         removeRows[i] <- row
@@ -172,7 +194,7 @@ includeRows <- function(pointList, rowIndexVector, dataFrame, xCol, yCol)
   ## Add the pointsToAdd to the end of pointList
   pointList <- rbind(pointList, pointsToAdd)
   ## Sort pointList by wavelength
-  pointList <- pointList[order(pointList[,xCol], decreasing = FALSE), ]
+  pointList <- pointList[order(pointList[, 1], decreasing = FALSE), ]
   
   return(pointList)
 }
@@ -190,31 +212,24 @@ matchRowToLit <- function(dataFrame, litFrame, tolerance = 0.2)
   dataFrame[, nCols + 1] <- rep(NA, nRows)
   names(dataFrame)[nCols + 1] <- "BVQN"
   
-  matchedRows <- 0 ## Vector to store rows in dataFrame that were successfully matched to literature
-  mrInd <- 1 ## matchedRows indexer
-  
-  dfRows <- c(2:(nRows-1)) ## rows in dataFrame (excludes endpoints to allow for checking of candidates)
-  for(row in dfRows)
+  for(row in c(1:nRows))
   {
     cwl <- dataFrame[row, 1] ## candidate wavelength for literature match
     for(litRow in c(1:nrow(litFrame)))
     {
       lwl <- litFrame[litRow,1] ## literature wavelength
-      if(abs(cwl - lwl) < tolerance) {
-        dataFrame[row, nCols + 1] <- litFrame[litRow,2]
-        matchedRows[mrInd] <- row
-        mrInd <- mrInd + 1
-      }
+      if(abs(cwl - lwl) < tolerance) dataFrame[row, nCols + 1] <- litFrame[litRow,2]
     }
   }
-  
+  dataFrame <- extrapolateV(dataFrame)
   return(dataFrame)
 }
 
 extrapolateV <- function(dataFrame)
-  ## Assuming matchRowToLit was successful, consecutive rows in dataFrame should contain consecutive v' values.
-  ## The remaining v' values are assigned by this function.
 {
+  ## Sort the dataFrame by values in its first column (wavelength)
+  dataFrame <- dataFrame[order(dataFrame[, 1], decreasing = FALSE), ]
+  
   nCols <- ncol(dataFrame) ## BVQN should be stored in last column
   maxvRow <- which.max(dataFrame[, nCols]) ## row of max v'
   minvRow <- which.min(dataFrame[, nCols]) ## row of min v'
