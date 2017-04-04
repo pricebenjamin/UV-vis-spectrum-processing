@@ -29,7 +29,11 @@ mainPlot <- ggplot(data = ggAbsorbance) +
   geom_line(mapping = aes(x = Wavelength, y = Absorbance), alpha = 0.6, size = 0.2) +
   x_scale + 
   y_scale +
-  labs(title = "UV-Vis spectrum of molecular iodine at T = 60 C", x = "Wavelength [nm]", y = "Absorbance") +
+  labs(
+    title = "UV-Vis spectrum of molecular iodine at T = 60 C", x = "Wavelength [nm]", y = "Absorbance",
+    caption = "Indicated peaks correspond to molecular transitions from particular ground-state vibrational levels to 
+    various excited-state vibrational levels. The precise band head can be deduced from the overlaid axes."
+  ) +
   theme_bw()
 
 mainPlot
