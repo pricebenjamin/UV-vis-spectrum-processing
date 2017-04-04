@@ -27,7 +27,7 @@ filteredMaxima <- maxAbsFilter(absorbance, xCol = x, yCol = y, threshold = 0.01,
 filteredMaxima <- removePointsByValue(filteredMaxima, value = 505, ltVal = TRUE)
 filteredMaxima <- removePointsByValue(filteredMaxima, value = 612, ltVal = FALSE)
 
-## Crudely filtered between ground-state vibrational levels
+## Crudely filter between ground-state vibrational levels
 xvqn0Points <- removePointsByValue(filteredMaxima, value = 574.5, ltVal = FALSE)
 xvqn0Points <- removeEveryOtherAfter(xvqn0Points, value = 542)
 
