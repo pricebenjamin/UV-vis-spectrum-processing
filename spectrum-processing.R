@@ -8,26 +8,6 @@ absorbance <- read.csv(filename, header = TRUE)
 head(absorbance)
 tail(absorbance)
 
-#### Compare different boxcar widths to raw data ####
-bw1 <- applyBoxcarWidth(absorbance, 1)
-bw2 <- applyBoxcarWidth(absorbance, 2)
-
-x <- 1
-y <- 2
-plot(
-  absorbance[[y]] ~ absorbance[[x]],
-  xlab = "Wavelength (nm)", ylab = "Absorbance",
-  xlim = c(500, 700), ylim = c(0, 0.8),
-  lwd = 0.1, col = "black", type = "l"
-)
-lines(bw1[[y]] ~ bw1[[x]], lwd = 0.1, col = "orange")
-lines(bw2[[y]] ~ bw2[[x]], lwd = 1, col = "red")
-abline(v = c(541.2, 539.0, 536.9, 571.6, 568.6, 565.6, 595.7, 592.0, 588.5), col = "blue")
-
-absorbanceWithBoxcar <- applyBoxcarWidth(absorbance, 2) ## Really slow...
-head(absorbanceWithBoxcar)
-tail(absorbanceWithBoxcar)
-
 #### Spectrum processing ####
 
 x <- 1 ## Column of 'absorbance' dataframe that holds x-values, e.g. 1 <-> Wavelength
@@ -37,78 +17,76 @@ y <- 2 ## Column of 'absorbance' dataframe that holds y-values, e.g. 2 <-> Absor
 ## This filename should explain which absorbance is being processed, 
 ##  e.g. if y == 2, then you're processing the second column of the loaded csv file.
 ##  Use head(absorbance) if you don't know which column that is!
-outputFilename <- "spectraSuite-bxw-2-processed-peaks.csv"
-
-abs <- absorbance[,c(x,y)] ## Selecting and storing the columns of interest from the absorbance df
-##abs <- absorbanceWithBoxcar[,c(x,y)]
-## abs <- absorbance[19:3500,c(x,y)]
-colNames <- c("Wavelength", "Absorbance")    ## Names of columns
-names(abs)[] <- colNames
-head(abs)
-tail(abs)
+outputFilename <- "60_C-spectra-suite-boxcar-width-2-processed-peaks.csv"
 
 ## Make sure you've loaded the functions from "spectrum-processing-functions.R"
 
-mxInd <- peakr(abs, xCol = 1, yCol = 2, findMins = FALSE, returnIndices = TRUE) ## find indices of maxima
-mnInd <- peakr(abs, xCol = 1, yCol = 2, findMins = TRUE, returnIndices = TRUE) ## find indices of minima
-extremeInd <- sort(c(mxInd, mnInd), decreasing = FALSE) ## sort extrema indices
+unfilteredMaxima <- peakr(absorbance, xCol = x, yCol = y, findMins = FALSE, returnIndices = FALSE)
 
-ufmx <- indicesToPoints(abs, mxInd, xCol = 1, yCol = 2) ## Unfiltered maximums (for visual analysis)
-head(ufmx)
+filteredMaxima <- maxAbsFilter(absorbance, xCol = x, yCol = y, threshold = 0.01, type = "left")
+filteredMaxima <- removePointsByValue(filteredMaxima, value = 505, ltVal = TRUE)
+filteredMaxima <- removePointsByValue(filteredMaxima, value = 612, ltVal = FALSE)
 
-#### Filter parameters for transitions originating in v'' = 0 only####
-absorbanceDeltaThreshold <- 0.01
-removeBefore             <- 513
-removeAfter              <- 573
-getEveryOtherAfter       <- 548
+## Crudely filter between ground-state vibrational levels
+xvqn0Points <- removePointsByValue(filteredMaxima, value = 574.5, ltVal = FALSE)
+xvqn0Points <- removeEveryOtherAfter(xvqn0Points, value = 542)
 
-fmxInd <- maxAbsFilter(abs, extremeInd, yCol = 2, threshold = absorbanceDeltaThreshold) ## filter maxima indices
-fmxPts <- indicesToPoints(abs, fmxInd, xCol = 1, yCol = 2) ## create dataframe of filtered maxima
-fmxPtsR <- removePointsByValue(fmxPts, value = removeBefore, ltVal = TRUE)
-fmxPtsR <- removePointsByValue(fmxPtsR, value = removeAfter, ltVal = FALSE)
-fmxPtsR <- removeEveryOtherAfter(fmxPtsR, value = getEveryOtherAfter)
+xvqn1Points <- removePointsByValue(filteredMaxima, value = 545, ltVal = TRUE)
+xvqn1Points <- removePointsByValue(xvqn1Points, value = 575, ltVal = FALSE)
+xvqn1Points <- removeEveryOtherAfter(xvqn1Points, value = 545)
 
-names(fmxPtsR)[] <- c("Wavelength", "Absorbance")
-head(fmxPtsR)
+xvqn2Points <- removePointsByValue(filteredMaxima, value = 581.3, ltVal = TRUE)
 
-## Example of adding specific rows to my filtered max points; use only in special circumstances
-## fmxPtsR <- includeRows(fmxPtsR, c(100,148,210), absorbance, x, y)
-## head(fmxPtsR)
+## Add remaining points that weren't handled by the crude filtering
+xvqn0Points <- rbind(xvqn0Points, unfilteredMaxima[which(abs(unfilteredMaxima$Wavelength - 577.46) < 0.1), ])
 
-head(simes)
-head(mcnaught)
+xvqn1Points <- rbind(xvqn1Points, unfilteredMaxima[which(abs(unfilteredMaxima$Wavelength - 577.91) < 0.1), ])
+xvqn1Points <- rbind(xvqn1Points, unfilteredMaxima[which(abs(unfilteredMaxima$Wavelength - 581.22) < 0.1), ])
 
-pointsMatchedToLit <- matchRowToLit(fmxPtsR, simes) ## assign v' values to filtered maxima using literature values
-pointsMatchedToLit
+xvqn2Points <- rbind(xvqn2Points, unfilteredMaxima[which(abs(unfilteredMaxima$Wavelength - 578.48) < 0.1), ])
+xvqn2Points <- rbind(xvqn2Points, unfilteredMaxima[which(abs(unfilteredMaxima$Wavelength - 575.34) < 0.1), ])
 
-procData <- extrapolateV(pointsMatchedToLit) ## assign remaining v' values according to previously assigned lit vals
-procData ## fully processed data
+## Assign XVQN
+xvqn0Points <- data.frame(xvqn0Points, XVQN = 0)
+xvqn1Points <- data.frame(xvqn1Points, XVQN = 1)
+xvqn2Points <- data.frame(xvqn2Points, XVQN = 2)
 
-## Verify your processed peaks by plotting
-point.sym <- 1 ## 19 == solid circular point, 1 == open circle
-plot(abs[[2]]~abs[[1]], xlab = names(abs)[1], ylab = names(abs)[2], 
-     ##xlim = c(545, 550), ## Zoom in to inspect peaks
-     ylim = c(0,0.8), 
-     type = 'l')
-points(ufmx, col = "red", pch = point.sym)
-points(fmxPts, col = "blue", pch = point.sym)
-##points(fmxPtsR, col = "blue", pch = point.sym, cex = 1.4)
-abline(v = 573) ## Draw some lines to help fined sorting values
+## Assign BVQN
+xvqn0Points <- matchRowToLit(xvqn0Points, mcnaught[which(mcnaught$XVQN == 0), c(1,3)])
+xvqn1Points <- matchRowToLit(xvqn1Points, mcnaught[which(mcnaught$XVQN == 1), c(1,3)])
+xvqn2Points <- matchRowToLit(xvqn2Points, mcnaught[which(mcnaught$XVQN == 2), c(1,3)])
 
-## Plotting with ggplot and labeling fmxPts by wavelength
+## Plot to verify
+plot(absorbance[[y]]~absorbance[[x]], type = 'l', xlab = "Wavelength (nm)", ylab = "Absorbance",
+     xlim = c(500, 700), ylim = c(0, 0.6))
+points(unfilteredMaxima, col = "red")
+points(filteredMaxima, col = "green")
+
+blueColors <- colorRampPalette(c("blue", "cyan"))(3)
+points(xvqn0Points[, c(1,2)], col = blueColors[1], pch = 19)
+points(xvqn0Points[, c(1,2)], col = "black", pch = 1)
+points(xvqn1Points[, c(1,2)], col = blueColors[2], pch = 19)
+points(xvqn1Points[, c(1,2)], col = "black", pch = 1)
+points(xvqn2Points[, c(1,2)], col = blueColors[3], pch = 19)
+points(xvqn2Points[, c(1,2)], col = "black", pch = 1)
+
+procData <- rbind(xvqn0Points, xvqn1Points, xvqn2Points)
+procData
+
+write.csv(procData, outputFilename, row.names = FALSE)
+
+## Plotting with ggplot and labeling filteredMaxima by wavelength
 require(ggplot2)
 require(ggrepel)
-roundedValues <- fmxPts
-roundedValues[,1] <- round(fmxPts[,1], digits = 2)
-roundedValues <- removePointsByValue(roundedValues, 505)
-roundedValues <- removePointsByValue(roundedValues, 620, ltVal = FALSE)
+roundedValues <- filteredMaxima
+roundedValues[,1] <- round(filteredMaxima[,1], digits = 2)
 head(roundedValues)
 tail(roundedValues)
-ggplot(data = abs, mapping = aes(x = Wavelength, y = Absorbance)) +
+ggplot(data = absorbance, mapping = aes(x = Wavelength, y = bxw2Absorbance)) +
   scale_y_continuous(limits = c(0, 0.6)) + 
   geom_line() + 
-  geom_point(data = ufmx, col = "red", shape = 1) + 
-  geom_point(data = fmxPts, col = "blue", shape = 1) + 
+  geom_point(data = unfilteredMaxima, col = "red", shape = 1) + 
+  geom_point(data = filteredMaxima, col = "blue", shape = 1) + 
   ggrepel::geom_text_repel(
     data = roundedValues, 
     mapping = aes(label = Wavelength, angle = 90),
@@ -130,97 +108,27 @@ ggsave(
 ## Write out the processed data
 write.csv(procData, outputFilename, row.names = FALSE)
 
-#### Filter parameters for transitions that originate in v'' = c(0, 1, 2) ####
-absorbanceDeltaThreshold <- 0.01
-removeBefore <- 505
-removeAfter <- 620
-
-filteredPeaks <- maxAbsFilter(absorbance, extremeInd, yCol = y, threshold = absorbanceDeltaThreshold)
-filteredPeaks <- indicesToPoints(absorbance, filteredPeaks, x, y)
-filteredPeaks <- removePointsByValue(filteredPeaks, removeBefore, ltVal = TRUE)
-filteredPeaks <- removePointsByValue(filteredPeaks, removeAfter, ltVal = FALSE)
-
-## Finding the first peak corresponding to v'' = 2
-head(ufmx)
-pkwl <- 574.71 ## peak wavelength
-tol <- 1 ## tolerance
-ufmx[which(abs(ufmx[,1] - pkwl) < tol),] ## Filter for rows whose wavelength is within tol of pkwl
-filteredPeaks <- includeRows(filteredPeaks, c(1281), absorbance, x, y)
-
-## Plotting to verify that all peaks have been found before sorting between v'' = (0,1,2)
-plot(absorbance[[y]] ~ absorbance[[x]],
-     ylim = c(0, 0.6),
-     type = 'l')
-points(ufmx, col = "red", pch = 1)
-points(filteredPeaks, col = "blue", pch = 1)
-
-## Grouping filteredPeaks into v'' = c(0,1,2)
-vpp0 <- removePointsByValue(filteredPeaks, value = 574.5, ltVal = FALSE)
-vpp0 <- removeEveryOtherAfter(vpp0, value = 542)
-ufmx[which(abs(ufmx[,1] - 577.46) < 0.1),]
-vpp0 <- includeRows(vpp0, c(1318), absorbance, x, y)
-
-vpp1 <- removePointsByValue(filteredPeaks, value = 545, ltVal = TRUE)
-vpp1 <- removePointsByValue(vpp1, value = 575, ltVal = FALSE)
-vpp1 <- removeEveryOtherAfter(vpp1, value = 545)
-ufmx[which(abs(ufmx[,1] - 577.91) < 0.1), ]
-ufmx[which(abs(ufmx[,1] - 581.22) < 0.1), ]
-vpp1 <- includeRows(vpp1, c(1326, 1384), absorbance, x, y)
-
-vpp2 <- removePointsByValue(filteredPeaks, value = 581.5, ltVal = TRUE)
-ufmx[which(abs(ufmx[,1] - 575.34) < 0.1), ]
-ufmx[which(abs(ufmx[,1] - 578.48) < 0.1), ]
-vpp2 <- includeRows(vpp2, c(1281, 1336), absorbance, x, y)
-
-blueColors <- colorRampPalette(c("blue", "cyan"))(3)
-points(vpp0, col = blueColors[1], pch = 19)
-points(vpp0, col = "black", pch = 1)
-points(vpp1, col = blueColors[2], pch = 19)
-points(vpp1, col = "black", pch = 1)
-points(vpp2, col = blueColors[3], pch = 19)
-points(vpp2, col = "black", pch = 1)
-
-vpp0 <- data.frame(vpp0, XVQN = 0)
-vpp1 <- data.frame(vpp1, XVQN = 1)
-vpp2 <- data.frame(vpp2, XVQN = 2)
-
-vpp0 <- matchRowToLit(vpp0, mcnaught[which(mcnaught[, 2] == 0), c(1,3)])
-vpp0 <- extrapolateV(vpp0)
-vpp1 <- matchRowToLit(vpp1, mcnaught[which(mcnaught[, 2] == 1), c(1,3)])
-vpp1 <- extrapolateV(vpp1)
-vpp2 <- matchRowToLit(vpp2, mcnaught[which(mcnaught[, 2] == 2), c(1,3)])
-vpp2 <- extrapolateV(vpp2)
-
-procData <- rbind(vpp0, vpp1, vpp2)
-procData
-
-write.csv(procData, outputFilename, row.names = FALSE)
-
 #### Export filter parameters and associated input/output filenames + hashes ####
 require(digest)
 filterParametersFilename = "filter-parameters.csv"
 filterParameters <- read.csv(filterParametersFilename, header = TRUE, stringsAsFactors = FALSE)
 filterParameters <- rbind(filterParameters,
-  c(
-    filename,                               ## inputDataFilename
-    digest(file = filename, algo = "sha1"), ## inputSHA1
-    x, y,
-    absorbanceDeltaThreshold,
-    removeBefore,
-    removeAfter,
-    getEveryOtherAfter,
-    outputFilename,                               ## outputFile
-    digest(file = outputFilename, algo = "sha1")  ## outputSHA1
-  )
+                          c(
+                            filename,                               ## inputDataFilename
+                            digest(file = filename, algo = "sha1"), ## inputSHA1
+                            x, y,
+                            absorbanceDeltaThreshold,
+                            removeBefore,
+                            removeAfter,
+                            getEveryOtherAfter,
+                            outputFilename,                               ## outputFile
+                            digest(file = outputFilename, algo = "sha1")  ## outputSHA1
+                          )
 )
 head(filterParameters)
 write.csv(filterParameters, filterParametersFilename, row.names = FALSE)
 
-#### Simple R plot ####
-## Choose two columns to plot
-x <- 3    ## Column number of x-values e.g. (Wavelength) in 'absorbance' dataframe
-y <- 4    ## Column number of y-values e.g. (Absorbance) in 'absorbance' dataframe
-
+#### Open SVG file for polotting ####
 wd <- 20          ## Width
 pt.sz <- 12       ## point size
 lwd <- 0.2        ## line width; default = 1
@@ -231,18 +139,6 @@ svg(filename = svgfn,
     width = wd, 
     height = wd, 
     pointsize = pt.sz)
-
-plot(absorbance[[y]]~absorbance[[x]], xlab = names(absorbance)[x], ylab = names(absorbance)[y],
-     type = 'p', col = lcolor, lwd = lwd
-     ## , xaxp = c(500, 700, 40)
-     , xlim = c(0,0.2), ylim = c(0,0.2)
-     , asp = 1
-)
-abline(a = 0, b = 1)
-abline(v = 547)
-abline(v = 580)
-points(fmxPts, col = 'red')
-points(finalData[,1:2], col = 'green')
 
 ## Simes: "Assign upper-state vibrational quantum number v' with the assistance of
 ## a few values taken from the literature (Table 31-1 and Fig. 31-4)."

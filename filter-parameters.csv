@@ -1,7 +1,0 @@
-"inputDataFile","inputSHA1","xColumn","yColumn","absorbanceDeltaThreshold","removeBefore","removeAfter","getEveryOtherAfter","outputFile","outputSHA1"
-"highT-combined-spectral-data.csv","9b0b4b23f964aba53edec3dbac11ebe0b76c107d","1","3","0.027","513","578","540","highT-processed-peaks-with-vqn-48_5C.csv","2425eeb69fd69cdeb7882682e47a3fd196bfe9a1"
-"highT-combined-spectral-data.csv","9b0b4b23f964aba53edec3dbac11ebe0b76c107d","1","2","0.017","513","578","543","highT-processed-peaks-with-vqn-45_5C.csv","ab3a06388632bb961b518e30bb1717d0cbbe4e0a"
-"highT-combined-spectral-data.csv","9b0b4b23f964aba53edec3dbac11ebe0b76c107d","1","4","0.02","513","578","543","highT-processed-peaks-with-vqn-50_0C.csv","a7a01a24cf3709806847131c0dd747d25e624b0a"
-"roomT-combined-spectral-data.csv","ba6bd8cfaa626d07e216924fae1a13e9b4a23ed7","1","2","0.0044","513","573","548","roomT-processed-peaks-with-vqn-1min.csv","7cd9c19e0ec461f462a212f11a34c575634a7d1b"
-"roomT-combined-spectral-data.csv","ba6bd8cfaa626d07e216924fae1a13e9b4a23ed7","1","3","0.0044","513","578","548","roomT-processed-peaks-with-vqn-5min-1.csv","b052babd57e8c5e33f440d4f37ed23bb571198a0"
-"roomT-combined-spectral-data.csv","ba6bd8cfaa626d07e216924fae1a13e9b4a23ed7","1","4","0.0044","525","567","548","roomT-processed-peaks-with-vqn-5min-2.csv","2edeeff6e663a31d2d85773f6abcc1d092a14d4e"
